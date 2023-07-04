@@ -1,0 +1,5 @@
+.ipynb_checkpoints
+.DS_Store
+mhc1_cleavages_nc_ranks.csv
+uniref_3M.vec
+__pycache__/
