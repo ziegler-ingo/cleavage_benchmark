@@ -629,8 +629,10 @@ if args.k_fold > 0:
     kf = KFold(n_splits=args.k_fold, shuffle=True, random_state=args.random_seed)
 
     # get new split
-    highest_val_auc = 0
+    total_highest_val_auc = 0
     for fold, (train_idx, val_idx) in enumerate(kf.split(train_seqs), 1):
+        fold_highest_val_auc = 0
+        print("total:", total_highest_val_auc, "fold:", fold_highest_val_auc)
         X_tr = train_seqs[train_idx]
         y_tr = train_lbls[train_idx]
         X_val = train_seqs[val_idx]
@@ -692,7 +694,7 @@ if args.k_fold > 0:
                 scaler = torch.cuda.amp.GradScaler()  # type: ignore
             else:
                 scaler = None
-            highest_val_auc = run_epochs_base(
+            total_highest_val_auc, fold_highest_val_auc = run_epochs_base(
                 model=model,
                 model_type=args.model_type,
                 train_loader=train_loader,
@@ -701,7 +703,8 @@ if args.k_fold > 0:
                 device=args.device,
                 fold=fold,
                 num_epochs=args.num_epochs,
-                highest_val_auc=highest_val_auc,
+                total_highest_val_auc=total_highest_val_auc,
+                fold_highest_val_auc=fold_highest_val_auc,
                 early_stop=args.early_stop,
                 logging_path=logging_path + "train_results.csv",
                 param_path=param_path,
@@ -718,7 +721,7 @@ if args.k_fold > 0:
                 scaler = torch.cuda.amp.GradScaler()  # type: ignore
             else:
                 scaler = None
-            highest_val_auc = run_epochs_nad(
+            total_highest_val_auc, fold_highest_val_auc = run_epochs_nad(
                 model_type=args.model_type,
                 train_loader=train_loader,
                 val_loader=val_loader,
@@ -729,7 +732,8 @@ if args.k_fold > 0:
                 num_warmup=args.num_warmup,
                 learning_rate=args.lr,
                 beta=args.beta,
-                highest_val_auc=highest_val_auc,
+                total_highest_val_auc=total_highest_val_auc,
+                fold_highest_val_auc=fold_highest_val_auc,
                 early_stop=args.early_stop,
                 logging_path=logging_path + "train_results.csv",
                 param_path=param_path,
@@ -760,7 +764,7 @@ if args.k_fold > 0:
                     scaler = torch.cuda.amp.GradScaler()  # type: ignore
                 else:
                     scaler = None
-                highest_val_auc = run_epochs_jocor(
+                total_highest_val_auc, fold_highest_val_auc = run_epochs_jocor(
                     model_type=args.model_type,
                     train_loader=train_loader,
                     val_loader=val_loader,
@@ -770,7 +774,8 @@ if args.k_fold > 0:
                     device=args.device,
                     fold=fold,
                     num_epochs=args.num_epochs,
-                    highest_val_auc=highest_val_auc,
+                    total_highest_val_auc=total_highest_val_auc,
+                    fold_highest_val_auc=fold_highest_val_auc,
                     early_stop=args.early_stop,
                     logging_path=logging_path + "train_results.csv",
                     param_path=param_path,
@@ -792,7 +797,7 @@ if args.k_fold > 0:
                     scaler2 = torch.cuda.amp.GradScaler()  # type: ignore
                 else:
                     scaler1, scaler2 = None, None
-                highest_val_auc = run_epochs_coteach(
+                total_highest_val_auc, fold_highest_val_auc = run_epochs_coteach(
                     model_type=args.model_type,
                     train_loader=train_loader,
                     val_loader=val_loader,
@@ -802,7 +807,8 @@ if args.k_fold > 0:
                     device=args.device,
                     fold=fold,
                     num_epochs=args.num_epochs,
-                    highest_val_auc=highest_val_auc,
+                    total_highest_val_auc=total_highest_val_auc,
+                    fold_highest_val_auc=fold_highest_val_auc,
                     early_stop=args.early_stop,
                     logging_path=logging_path + "train_results.csv",
                     param_path=param_path,
@@ -822,7 +828,7 @@ if args.k_fold > 0:
 
 else:
     fold = 0  # placeholder value
-    highest_val_auc = 0
+    total_highest_val_auc, fold_highest_val_auc = 0, 0
 
     # check all denoising methods and execute training through all epochs
     if args.denoising_method == "None":
@@ -834,7 +840,7 @@ else:
             scaler = torch.cuda.amp.GradScaler()  # type: ignore
         else:
             scaler = None
-        highest_val_auc = run_epochs_base(
+        total_highest_val_auc, fold_highest_val_auc = run_epochs_base(
             model=model,
             model_type=args.model_type,
             train_loader=train_loader,
@@ -843,7 +849,8 @@ else:
             device=args.device,
             fold=fold,
             num_epochs=args.num_epochs,
-            highest_val_auc=highest_val_auc,
+            total_highest_val_auc=total_highest_val_auc,
+            fold_highest_val_auc=fold_highest_val_auc,
             early_stop=args.early_stop,
             logging_path=logging_path + "train_results.csv",
             param_path=param_path,
@@ -860,7 +867,7 @@ else:
             scaler = torch.cuda.amp.GradScaler()  # type: ignore
         else:
             scaler = None
-        highest_val_auc = run_epochs_nad(
+        total_highest_val_auc, fold_highest_val_auc = run_epochs_nad(
             model_type=args.model_type,
             train_loader=train_loader,
             val_loader=val_loader,
@@ -871,7 +878,8 @@ else:
             num_warmup=args.num_warmup,
             learning_rate=args.lr,
             beta=args.beta,
-            highest_val_auc=highest_val_auc,
+            total_highest_val_auc=total_highest_val_auc,
+            fold_highest_val_auc=fold_highest_val_auc,
             early_stop=args.early_stop,
             logging_path=logging_path + "train_results.csv",
             param_path=param_path,
@@ -901,7 +909,7 @@ else:
                 scaler = torch.cuda.amp.GradScaler()  # type: ignore
             else:
                 scaler = None
-            highest_val_auc = run_epochs_jocor(
+            total_highest_val_auc, fold_highest_val_auc = run_epochs_jocor(
                 model_type=args.model_type,
                 train_loader=train_loader,
                 val_loader=val_loader,
@@ -911,7 +919,8 @@ else:
                 device=args.device,
                 fold=fold,
                 num_epochs=args.num_epochs,
-                highest_val_auc=highest_val_auc,
+                total_highest_val_auc=total_highest_val_auc,
+                fold_highest_val_auc=fold_highest_val_auc,
                 early_stop=args.early_stop,
                 logging_path=logging_path + "train_results.csv",
                 param_path=param_path,
@@ -931,7 +940,7 @@ else:
                 scaler2 = torch.cuda.amp.GradScaler()  # type: ignore
             else:
                 scaler1, scaler2 = None, None
-            highest_val_auc = run_epochs_coteach(
+            total_highest_val_auc, fold_highest_val_auc = run_epochs_coteach(
                 model_type=args.model_type,
                 train_loader=train_loader,
                 val_loader=val_loader,
@@ -941,7 +950,8 @@ else:
                 device=args.device,
                 fold=fold,
                 num_epochs=args.num_epochs,
-                highest_val_auc=highest_val_auc,
+                total_highest_val_auc=total_highest_val_auc,
+                fold_highest_val_auc=fold_highest_val_auc,
                 early_stop=args.early_stop,
                 logging_path=logging_path + "train_results.csv",
                 param_path=param_path,
@@ -974,7 +984,7 @@ model.eval()
 # ESM2 and T5 have respective pre-trained tokenizers provided
 # everywhere else, we have the default 20 amino acid + UNK vocab
 if args.k_fold > 0 and "bbpe" in args.model_name:
-    best_fold = best_model.split("_")[1]
+    best_fold = best_model.split("_")[1]  # type: ignore
     all_vocabs = [
         f.split("-") for f in os.listdir(param_path) if f.endswith("vocab.json")
     ]
@@ -995,7 +1005,7 @@ if args.k_fold > 0 and "bbpe" in args.model_name:
     _, _, test_loader = loader.load(args.model_type, nad=args.nad, unk_idx=args.unk_idx)
 
 elif args.k_fold > 0 and "wp50" in args.model_name:
-    best_fold = best_model.split("_")[1]
+    best_fold = best_model.split("_")[1]  # type: ignore
     all_vocabs = [
         f.split("-") for f in os.listdir(param_path) if f.endswith("vocab.txt")
     ]

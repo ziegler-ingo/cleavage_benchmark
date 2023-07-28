@@ -24,14 +24,14 @@ def run_epochs_base(
     device,
     fold,
     num_epochs,
-    highest_val_auc,
+    total_highest_val_auc,
+    fold_highest_val_auc,
     early_stop,
     logging_path,
     param_path,
     optim=None,
     scaler=None,
 ):
-    highest_val_auc = highest_val_auc
     num_overfitted, num_neg_progress = 0, 0
     for epoch in range(1, num_epochs + 1):
         model.train()
@@ -71,23 +71,29 @@ def run_epochs_base(
             f"Evaluation: [Fold {fold:2d}, Epoch {epoch:2d}, Loss: {val_loss:8.6f}, Acc: {val_acc:.4f}, AUC: {val_auc:.4f}]"
         )
 
+        if val_auc > fold_highest_val_auc:
+            fold_highest_val_auc = val_auc
+            num_neg_progress = 0
+        else:
+            num_neg_progress += 1
+
         reg_auc = regularized_auc(train_auc, val_auc, threshold=0)
         num_overfitted = num_overfitted + 1 if not reg_auc else 0
-        num_neg_progress = num_neg_progress + 1 if val_auc < highest_val_auc else 0
         _path = param_path + f"auc{reg_auc:.4f}_fold{fold}_epoch{epoch}.pt"
         if num_overfitted == early_stop or num_neg_progress == early_stop:
             print(f"Early stopped after epoch {epoch}.")
             print(
                 f"num_overfitted={num_overfitted}, num_neg_progress={num_neg_progress}"
             )
+            break
         if fold == 1 and epoch == 1:
             # save first model in all cases
             torch.save(model.state_dict(), _path)
-        elif reg_auc > highest_val_auc:
-            highest_val_auc = reg_auc
+        elif reg_auc > total_highest_val_auc:
+            total_highest_val_auc = reg_auc
             torch.save(model.state_dict(), _path)
 
-    return highest_val_auc
+    return total_highest_val_auc, fold_highest_val_auc
 
 
 def run_epochs_coteach(
@@ -100,7 +106,8 @@ def run_epochs_coteach(
     device,
     fold,
     num_epochs,
-    highest_val_auc,
+    total_highest_val_auc,
+    fold_highest_val_auc,
     early_stop,
     logging_path,
     param_path,
@@ -112,7 +119,6 @@ def run_epochs_coteach(
     scaler2=None,
     cot_plus_train=None,
 ):
-    highest_val_auc = highest_val_auc
     num_overfitted, num_neg_progress = 0, 0
     for epoch in range(1, num_epochs + 1):
         model1.train()
@@ -179,22 +185,23 @@ def run_epochs_coteach(
             f"Evaluation2: [Fold {fold:2d}, Epoch {epoch:2d}, Loss: {val_res[1]:8.6f}, Acc: {val_res[3]:.4f}, AUC: {val_res[5]:.4f}]"
         )
 
+        if val_res[3] > fold_highest_val_auc or val_res[4] > fold_highest_val_auc:
+            fold_highest_val_auc = max(val_res[3], val_res[4])  # type: ignore
+            num_neg_progress = 0
+        elif val_res[3] < fold_highest_val_auc and val_res[4] < fold_highest_val_auc:
+            num_neg_progress += 1
+
         reg_auc1 = regularized_auc(train_res[4], val_res[4], threshold=0)
         reg_auc2 = regularized_auc(train_res[5], val_res[5], threshold=0)
         # if both models underperform at the same time, start counting towards early stopping
         # if one model is still increasing performance, continue training
         num_overfitted = num_overfitted + 1 if not reg_auc1 and not reg_auc2 else 0
-        num_neg_progress = (
-            num_neg_progress + 1
-            if val_res[4] < highest_val_auc and val_res[5] < highest_val_auc
-            else 0
-        )
         if num_overfitted == early_stop or num_neg_progress == early_stop:
             print(f"Early stopped after epoch {epoch}.")
             print(
                 f"num_overfitted={num_overfitted}, num_neg_progress={num_neg_progress}"
             )
-
+            break
         if reg_auc1 > reg_auc2:
             _reg_auc = reg_auc1
             _path = param_path + f"auc{reg_auc1:.4f}_fold{fold}_epoch{epoch}.pt"
@@ -208,11 +215,11 @@ def run_epochs_coteach(
         if fold == 1 and epoch == 1:
             # save first model in all cases
             torch.save(_model, _path)
-        elif _reg_auc > highest_val_auc:
-            highest_val_auc = _reg_auc
+        elif _reg_auc > total_highest_val_auc:
+            total_highest_val_auc = _reg_auc
             torch.save(_model, _path)
 
-    return highest_val_auc
+    return total_highest_val_auc, fold_highest_val_auc
 
 
 def run_epochs_jocor(
@@ -225,7 +232,8 @@ def run_epochs_jocor(
     device,
     fold,
     num_epochs,
-    highest_val_auc,
+    total_highest_val_auc,
+    fold_highest_val_auc,
     early_stop,
     logging_path,
     param_path,
@@ -233,7 +241,6 @@ def run_epochs_jocor(
     optim=None,
     scaler=None,
 ):
-    highest_val_auc = highest_val_auc
     num_overfitted, num_neg_progress = 0, 0
     for epoch in range(1, num_epochs + 1):
         model1.train()
@@ -292,22 +299,23 @@ def run_epochs_jocor(
             f"Evaluation2: [Fold {fold:2d}, Epoch {epoch:2d}, Loss: {val_res[0]:8.6f}, Acc: {val_res[2]:.4f}, AUC: {val_res[4]:.4f}]"
         )
 
+        if val_res[3] > fold_highest_val_auc or val_res[4] > fold_highest_val_auc:
+            fold_highest_val_auc = max(val_res[3], val_res[4])  # type: ignore
+            num_neg_progress = 0
+        elif val_res[3] < fold_highest_val_auc and val_res[4] < fold_highest_val_auc:
+            num_neg_progress += 1
+
         reg_auc1 = regularized_auc(train_res[3], val_res[3], threshold=0)
         reg_auc2 = regularized_auc(train_res[4], val_res[4], threshold=0)
         # if both models underperform at the same time, start counting towards early stopping
         # if one model is still increasing performance, continue training
         num_overfitted = num_overfitted + 1 if not reg_auc1 and not reg_auc2 else 0
-        num_neg_progress = (
-            num_neg_progress + 1
-            if val_res[3] < highest_val_auc and val_res[4] < highest_val_auc
-            else 0
-        )
         if num_overfitted == early_stop or num_neg_progress == early_stop:
             print(f"Early stopped after epoch {epoch}.")
             print(
                 f"num_overfitted={num_overfitted}, num_neg_progress={num_neg_progress}"
             )
-
+            break
         if reg_auc1 > reg_auc2:
             _reg_auc = reg_auc1
             _path = param_path + f"auc{reg_auc1:.4f}_fold{fold}_epoch{epoch}.pt"
@@ -321,11 +329,11 @@ def run_epochs_jocor(
         if fold == 1 and epoch == 1:
             # save first model in all cases
             torch.save(_model, _path)
-        elif _reg_auc > highest_val_auc:
-            highest_val_auc = _reg_auc
+        elif _reg_auc > total_highest_val_auc:
+            total_highest_val_auc = _reg_auc
             torch.save(_model, _path)
 
-    return highest_val_auc
+    return total_highest_val_auc, fold_highest_val_auc
 
 
 def run_epochs_nad(
@@ -339,7 +347,8 @@ def run_epochs_nad(
     num_warmup,
     learning_rate,
     beta,
-    highest_val_auc,
+    total_highest_val_auc,
+    fold_highest_val_auc,
     early_stop,
     logging_path,
     param_path,
@@ -347,7 +356,6 @@ def run_epochs_nad(
     optim=None,
     scaler=None,
 ):
-    highest_val_auc = highest_val_auc
     num_overfitted, num_neg_progress = 0, 0
     noise_model, noise_optim = None, None
 
@@ -460,23 +468,29 @@ def run_epochs_nad(
                 f"Evaluation: [Fold {fold:2d}, Epoch {epoch:2d}, Loss: {val_loss:8.6f}, Acc: {val_acc:.4f}, AUC: {val_auc:.4f}]"
             )
 
+            if val_auc > fold_highest_val_auc:
+                fold_highest_val_auc = val_auc
+                num_neg_progress = 0
+            else:
+                num_neg_progress += 1
+
             reg_auc = regularized_auc(train_res[4], val_auc, threshold=0)
             num_overfitted = num_overfitted + 1 if not reg_auc else 0
-            num_neg_progress = num_neg_progress + 1 if val_auc < highest_val_auc else 0
             if num_overfitted == early_stop or num_neg_progress == early_stop:
                 print(f"Early stopped after epoch {epoch}.")
                 print(
                     f"num_overfitted={num_overfitted}, num_neg_progress={num_neg_progress}"
                 )
+                break
             _path = param_path + f"auc{reg_auc:.4f}_fold{fold}_epoch{epoch}.pt"
             if fold == 1 and epoch == 1:
                 # save first model in all cases
                 torch.save(model.state_dict(), _path)
-            elif reg_auc > highest_val_auc:
-                highest_val_auc = reg_auc
+            elif reg_auc > total_highest_val_auc:
+                total_highest_val_auc = reg_auc
                 torch.save(model.state_dict(), _path)
 
-    return highest_val_auc
+    return total_highest_val_auc, fold_highest_val_auc
 
 
 def train_or_eval_base(
