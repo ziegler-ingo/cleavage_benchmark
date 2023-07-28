@@ -632,7 +632,6 @@ if args.k_fold > 0:
     total_highest_val_auc = 0
     for fold, (train_idx, val_idx) in enumerate(kf.split(train_seqs), 1):
         fold_highest_val_auc = 0
-        print("total:", total_highest_val_auc, "fold:", fold_highest_val_auc)
         X_tr = train_seqs[train_idx]
         y_tr = train_lbls[train_idx]
         X_val = train_seqs[val_idx]
