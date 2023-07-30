@@ -77,7 +77,7 @@ class JoCoRLoss:
         self.co_lambda = 0.1
 
     def kl_loss(self, pred, soft_target):
-        return F.kl_div(F.logsigmoid(pred), F.sigmoid(soft_target), reduction="sum")
+        return F.kl_div(F.logsigmoid(pred), torch.sigmoid(soft_target), reduction="sum")
 
     def __call__(self, y1, y2, lbls, forget_rate):
         l1 = self.criterion(y1, lbls) * (1 - self.co_lambda)
